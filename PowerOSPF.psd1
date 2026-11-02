@@ -28,6 +28,7 @@
             Tags       = @('OSPF', 'OSPFv2', 'BFD', 'Routing', 'Lab', 'Testing', 'Networking', 'Packet')
             LicenseUri = 'https://github.com/erikgraa/PowerOSPF/blob/main/LICENSE'
             ProjectUri = 'https://github.com/erikgraa/PowerOSPF'
+            IconUri    = 'https://raw.githubusercontent.com/erikgraa/PowerOSPF/main/icon.png'
         }
     }
 }

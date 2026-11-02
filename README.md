@@ -1,4 +1,8 @@
-# PowerOSPF
+# 🛰️ PowerOSPF
+
+<p align="center"><img src="icon.png" alt="PowerOSPF icon" width="128"></p>
+
+[![PowerShell Gallery](https://img.shields.io/powershellgallery/v/PowerOSPF?label=PSGallery)](https://www.powershellgallery.com/packages/PowerOSPF)
 Pure-PowerShell, dependency-free **lab test tool** that speaks just enough **OSPFv2** (RFC 2328) and **BFD** (RFC 5880) to peer with real routers
 (Cisco, MikroTik, FRR, NSX, ...) and lets you hand-craft packets as `byte[]`. Modelled on [PowerBGP](https://github.com/erikgraa/PowerBGP).
 
@@ -74,6 +78,16 @@ New-Packet -LengthField Len -Field @(
 
 `New-PacketField` / `New-Packet` are generic: integers are big-endian, hex strings become raw bytes, and a length field can be filled in automatically.
 Builders return a `byte[]` without IP header; `ConvertFrom-OspfMessage -HasIpHeader` parses bytes captured from a raw socket.
+
+## 🐳 Container
+
+A prebuilt image is published to GHCR on every release (amd64, arm64):
+
+```powershell
+podman run -it --rm --network host --cap-add NET_RAW ghcr.io/erikgraa/powerospf:latest
+```
+
+Host networking lets sessions reach lab devices directly; raw IP protocol 89 needs root (the image default) or `CAP_NET_RAW`. Build locally with `podman build -f Containerfile -t powerospf .`.
 
 ## 🧰 Cmdlets
 
