@@ -1,0 +1,33 @@
+name: publish
+
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test
+        shell: pwsh
+        run: |
+          Install-Module Pester -MinimumVersion 5.5 -Force -Scope CurrentUser -SkipPublisherCheck
+          $cfg = New-PesterConfiguration
+          $cfg.Run.Path = './Tests'
+          $cfg.Run.Exit = $true
+          Invoke-Pester -Configuration $cfg
+      - name: Build nupkg
+        shell: pwsh
+        run: ./tools/Build-Nupkg.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nupkg
+          path: out/*.nupkg
+      - name: Publish to PowerShell Gallery
+        shell: pwsh
+        env:
+          PSGALLERY_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}
+        run: |
+          if (-not $env:PSGALLERY_API_KEY) { Write-Warning 'PSGALLERY_API_KEY not set; skipping publish.'; return }
+          Publish-PSResource -NupkgPath (Get-ChildItem out/*.nupkg).FullName -Repository PSGallery -ApiKey $env:PSGALLERY_API_KEY
