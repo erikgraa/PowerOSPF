@@ -308,6 +308,19 @@ Describe 'Adjacency between two in-memory routers' {
         }
     }
 
+    It 'a BFD Down takes the neighbor Down immediately' {
+        InModuleScope PowerOSPF {
+            $p = New-Pair
+            Step-Pair $p 60
+            $bfd = New-BfdSessionState -Name x -Peer 10.0.0.2 -LocalAddress 10.0.0.1 -DetectMult 3 -DesiredMinTx 1000000 -RequiredMinRx 1000000 -AuthType None -AuthKey '' -KeyId 1
+            $bfd.State = 'Down'; $bfd.WasUp = $true
+            $p.A.Bfd = $bfd
+            Invoke-OspfTick -Session $p.A -Now $p.Now
+            $p.A.Neighbors.Count | Should -Be 0
+            ($p.A.Events | Where-Object Type -eq 'Bfd').Count | Should -Be 1
+        }
+    }
+
     It 'Reset-OspfNeighbor forces a neighbor Down at once and holds Hellos down' {
         InModuleScope PowerOSPF {
             $p = New-Pair
@@ -327,6 +340,69 @@ Describe 'Adjacency between two in-memory routers' {
             $fake = New-OspfLsa -Type Router -AdvertisingRouter 1.1.1.1 -Sequence ($seq + 10)
             Invoke-OspfReceive -Session $p.A -Data (New-OspfLsUpdate -RouterId 2.2.2.2 -Lsa $fake) -Source 10.0.0.2 -Now $p.Now
             (Read-OspfLsaHeader $p.A.Lsdb[$key].Bytes 0).Sequence | Should -BeGreaterThan ($seq + 10)
+        }
+    }
+}
+
+Describe 'BFD packets' {
+    It 'round-trips a control packet' {
+        $m = New-BfdControl -State Up -Diagnostic 3 -DetectMult 5 -MyDiscriminator 11 -YourDiscriminator 22 -DesiredMinTxInterval 300000 -RequiredMinRxInterval 400000 -Poll | ConvertFrom-BfdControl
+        $m.Valid | Should -BeTrue
+        $m.State | Should -Be 'Up'
+        $m.Diagnostic | Should -Be 3
+        $m.DetectMult | Should -Be 5
+        $m.MyDiscriminator | Should -Be 11
+        $m.YourDiscriminator | Should -Be 22
+        $m.DesiredMinTxInterval | Should -Be 300000
+        $m.Poll | Should -BeTrue
+        $m.Length | Should -Be 24
+    }
+    It 'authenticates with <Type>' -ForEach @(
+        @{ Type = 'Simple'; Len = 24 + 3 + 6 }
+        @{ Type = 'KeyedMd5'; Len = 48 }
+        @{ Type = 'MeticulousKeyedMd5'; Len = 48 }
+        @{ Type = 'KeyedSha1'; Len = 52 }
+        @{ Type = 'MeticulousKeyedSha1'; Len = 52 }
+    ) {
+        $p = New-BfdControl -State Up -AuthType $Type -AuthKey secret -KeyId 2 -Sequence 9
+        $p.Length | Should -Be $Len
+        $m = ConvertFrom-BfdControl $p -AuthKey secret
+        $m.AuthType | Should -Be $Type
+        $m.KeyId | Should -Be 2
+        $m.AuthValid | Should -BeTrue
+        (ConvertFrom-BfdControl $p -AuthKey wrong).AuthValid | Should -BeFalse
+    }
+}
+
+Describe 'BFD state machine' {
+    It 'brings a session Up through the three-way handshake and detects loss' {
+        InModuleScope PowerOSPF {
+            $s = New-BfdSessionState -Name t -Peer 10.0.0.2 -LocalAddress 10.0.0.1 -DetectMult 3 -DesiredMinTx 1000000 -RequiredMinRx 1000000 -AuthType None -AuthKey '' -KeyId 1
+            $s.Status = 'Running'
+            $now = [datetime]'2030-01-01T00:00:00Z'
+            Invoke-BfdReceive -S $s -Source 10.0.0.2 -Now $now -Data (New-BfdControl -State Down -MyDiscriminator 77)
+            $s.State | Should -Be 'Init'
+            Invoke-BfdReceive -S $s -Source 10.0.0.2 -Now $now -Data (New-BfdControl -State Init -MyDiscriminator 77 -YourDiscriminator $s.MyDisc)
+            $s.State | Should -Be 'Up'
+            $s.WasUp | Should -BeTrue
+            Invoke-BfdTick -S $s -Now $now.AddSeconds(10)
+            $s.State | Should -Be 'Down'
+            $s.Diagnostic | Should -Be 1
+        }
+    }
+    It 'goes Down when the peer signals Down and rejects packets with a wrong discriminator' {
+        InModuleScope PowerOSPF {
+            $s = New-BfdSessionState -Name t -Peer 10.0.0.2 -LocalAddress 10.0.0.1 -DetectMult 3 -DesiredMinTx 1000000 -RequiredMinRx 1000000 -AuthType None -AuthKey '' -KeyId 1
+            $s.Status = 'Running'
+            $now = [datetime]'2030-01-01T00:00:00Z'
+            Invoke-BfdReceive -S $s -Source 10.0.0.2 -Now $now -Data (New-BfdControl -State Init -MyDiscriminator 77 -YourDiscriminator 5)
+            $s.State | Should -Be 'Down'
+            Invoke-BfdReceive -S $s -Source 10.0.0.2 -Now $now -Data (New-BfdControl -State Down -MyDiscriminator 77)
+            Invoke-BfdReceive -S $s -Source 10.0.0.2 -Now $now -Data (New-BfdControl -State Up -MyDiscriminator 77 -YourDiscriminator $s.MyDisc)
+            $s.State | Should -Be 'Up'
+            Invoke-BfdReceive -S $s -Source 10.0.0.2 -Now $now -Data (New-BfdControl -State Down -MyDiscriminator 77 -YourDiscriminator $s.MyDisc)
+            $s.State | Should -Be 'Down'
+            $s.Diagnostic | Should -Be 3
         }
     }
 }

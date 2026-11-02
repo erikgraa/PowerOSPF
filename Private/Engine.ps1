@@ -64,6 +64,7 @@ function New-OspfSessionState {
         LsaDirty           = $false
         Cancel             = $false
         HoldDown           = @{}
+        Bfd                = $null
         Socket             = $null
         Runspace           = $null
         PowerShell         = $null
