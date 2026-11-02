@@ -4,6 +4,9 @@ on:
   push:
     tags: ['v*']
 
+permissions:
+  contents: write
+
 jobs:
   publish:
     runs-on: ubuntu-latest
@@ -31,3 +34,9 @@ jobs:
         run: |
           if (-not $env:PSGALLERY_API_KEY) { Write-Warning 'PSGALLERY_API_KEY not set; skipping publish.'; return }
           Publish-PSResource -NupkgPath (Get-ChildItem out/*.nupkg).FullName -Repository PSGallery -ApiKey $env:PSGALLERY_API_KEY
+      - name: GitHub release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --verify-tag --title "$GITHUB_REF_NAME" --generate-notes out/*.nupkg
