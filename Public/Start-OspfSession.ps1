@@ -31,7 +31,6 @@ function Start-OspfSession {
         [string[]]$ExternalPrefix = @(),
         [string[]]$SummaryPrefix = @(),
         [ValidateRange(0, 16777215)][int]$Metric = 10,
-        [string]$BfdSession,
         [switch]$NoNetwork,
         [switch]$PassThru
     )
@@ -49,10 +48,6 @@ function Start-OspfSession {
         $state.Externals.Add($x)
     }
     foreach ($p in $SummaryPrefix) { $x = ConvertFrom-OspfPrefix $p; Add-Member -InputObject $x -NotePropertyMembers @{ Metric = $Metric }; $state.Summaries.Add($x) }
-    if ($BfdSession) {
-        if (-not $script:BfdSessions.ContainsKey($BfdSession)) { throw "No BFD session named '$BfdSession'" }
-        $state.Bfd = $script:BfdSessions[$BfdSession]
-    }
     Start-OspfRuntime -Session $state -NoNetwork:$NoNetwork
     $script:OspfSessions[$Name] = $state
     if ($PassThru) { Get-OspfSession -Name $Name }

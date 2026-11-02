@@ -64,6 +64,7 @@ function Receive-OspfHello {
         return
     }
     $key = $Msg.RouterId.ToString()
+    if ($Session.HoldDown[$key] -and $Now -lt $Session.HoldDown[$key]) { return }
     $n = $Session.Neighbors[$key]
     if (-not $n) {
         $n = New-OspfNeighbor (ConvertTo-OspfLong $Msg.RouterId) $SrcLong $Now
@@ -258,15 +259,6 @@ function Stop-OspfLsaInstance {
 function Invoke-OspfTick {
     param($Session, [datetime]$Now = [datetime]::UtcNow)
     if ($Session.Status -ne 'Running') { return }
-    if ($Session.Bfd -and $Session.Bfd.State -eq 'Down' -and $Session.Bfd.WasUp) {
-        foreach ($n in @($Session.Neighbors.Values)) {
-            if ($n.Address -eq (ConvertTo-OspfLong $Session.Bfd.Peer) -and $n.State -ne 'Down') {
-                Add-OspfEvent -Session $Session -Direction 'Info' -Type 'Bfd' -Neighbor $n.RouterId.ToString() -Message 'BFD session Down: killing neighbor'
-                Remove-OspfNeighbor $Session $n 'BFD Down' $Now
-            }
-        }
-        $Session.Bfd.WasUp = $false
-    }
     if ($Session.InterfaceState -eq 'Waiting' -and $Now -ge $Session.WaitDeadline) {
         Add-OspfEvent -Session $Session -Direction 'Info' -Type 'WaitTimer' -Message 'Wait timer expired'
         Invoke-OspfElection $Session $Now

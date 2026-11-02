@@ -63,7 +63,7 @@ function New-OspfSessionState {
         CorruptChecksum    = $false
         LsaDirty           = $false
         Cancel             = $false
-        Bfd                = $null
+        HoldDown           = @{}
         Socket             = $null
         Runspace           = $null
         PowerShell         = $null
