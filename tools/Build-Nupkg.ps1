@@ -7,7 +7,7 @@ $stage = Join-Path ([System.IO.Path]::GetTempPath()) "PowerOSPF-$([guid]::NewGui
 $module = Join-Path $stage 'PowerOSPF'
 New-Item -ItemType Directory -Path $module, $OutputPath -Force | Out-Null
 try {
-    foreach ($item in 'PowerOSPF.psd1', 'PowerOSPF.psm1', 'Public', 'Private', 'LICENSE', 'README.md', 'CHANGELOG.md') {
+    foreach ($item in 'PowerOSPF.psd1', 'PowerOSPF.psm1', 'Public', 'Private', 'LICENSE', 'README.md', 'CHANGELOG.md', 'icon.png') {
         Copy-Item -Path (Join-Path $root $item) -Destination $module -Recurse
     }
     Test-ModuleManifest -Path (Join-Path $module 'PowerOSPF.psd1') | Out-Null
