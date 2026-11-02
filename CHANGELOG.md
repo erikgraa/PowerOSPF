@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.1
+
+- Container image on GHCR, icon, README badges, GitHub release created by the publish workflow.
+
 ## 0.1.0
 
 - Initial release: OSPFv2 (RFC 2328) lab test peer over raw IP protocol 89.

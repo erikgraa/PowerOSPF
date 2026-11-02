@@ -3,6 +3,7 @@
 <p align="center"><img src="icon.png" alt="PowerOSPF icon" width="128"></p>
 
 [![PowerShell Gallery](https://img.shields.io/powershellgallery/v/PowerOSPF?label=PSGallery)](https://www.powershellgallery.com/packages/PowerOSPF)
+[![Tests](https://github.com/erikgraa/PowerOSPF/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/erikgraa/PowerOSPF/actions/workflows/tests.yml)
 Pure-PowerShell, dependency-free **lab test tool** that speaks just enough **OSPFv2** (RFC 2328) and **BFD** (RFC 5880) to peer with real routers
 (Cisco, MikroTik, FRR, NSX, ...) and lets you hand-craft packets as `byte[]`. Modelled on [PowerBGP](https://github.com/erikgraa/PowerBGP).
 

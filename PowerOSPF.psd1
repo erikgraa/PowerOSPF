@@ -1,6 +1,6 @@
 @{
     RootModule           = 'PowerOSPF.psm1'
-    ModuleVersion        = '0.1.0'
+    ModuleVersion        = '0.1.1'
     GUID                 = '3b8e1d52-7c4a-4f0e-9a63-5d2f8c1b6e07'
     Author               = 'erikgraa'
     Description          = 'Lab-use-only tool to stand up OSPFv2 test routers (and BFD peers) from PowerShell against routers such as Cisco, MikroTik, FRR or NSX. Form adjacencies over raw IP protocol 89, originate LSAs and prefixes, inject faults, and build or parse OSPF and BFD packets with a generic packet builder.'
