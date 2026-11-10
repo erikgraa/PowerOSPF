@@ -1,0 +1,46 @@
+name: Container retention
+
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_run:
+    workflows: [Container]
+    branches: [main]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: 'Delete eligible versions (otherwise dry run)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: ghcr-powerospf
+  cancel-in-progress: false
+
+jobs:
+  retention:
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Run retention safety tests
+        shell: pwsh
+        run: |
+          Install-Module Pester -MinimumVersion 5.5 -Force -Scope CurrentUser -SkipPublisherCheck
+          Invoke-Pester -Path ./Tests/ContainerRetention.Tests.ps1 -CI
+      - name: Retain 30 days of dated and SHA versions
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APPLY_RETENTION: ${{ github.event_name != 'workflow_dispatch' || inputs.apply }}
+        run: |
+          ./tools/Remove-OldContainerVersion.ps1 -Apply:($env:APPLY_RETENTION -eq 'true')
