@@ -104,6 +104,16 @@ Describe 'Package inventory and REST contract' {
             (Invoke-PackageApi '/users/erikgraa/packages/container/powerospf/versions/1').id | Should -Be 1
         } finally { $env:GH_TOKEN = $oldToken }
     }
+    It 'also decodes byte-based package API responses' {
+        $oldToken = $env:GH_TOKEN
+        $env:GH_TOKEN = 'fixture-only'
+        try {
+            Mock Invoke-WebRequest {
+                @{ Content = [Text.Encoding]::UTF8.GetBytes((ConvertTo-Json -InputObject @((New-Version)) -Depth 10)) }
+            }
+            (Invoke-PackageApi '/users/erikgraa/packages/container/powerospf/versions?per_page=100&page=1').id | Should -Be 1
+        } finally { $env:GH_TOKEN = $oldToken }
+    }
     It 'uses the documented API version and requires HTTP 204 for DELETE' {
         $env:GH_TOKEN = 'fixture-only'
         try {
@@ -151,6 +161,16 @@ Describe 'Manifest reference protection' {
         { Get-ReferencedDigests @((New-Version)) {
             [pscustomobject]@{ schemaVersion = 2; mediaType = 'application/vnd.oci.image.index.v1+json'; manifests = @() }
         } } | Should -Throw '*Incomplete*'
+    }
+    It 'decodes GHCR vendor JSON delivered as bytes and preserves digest verification' {
+        $script:FixtureDigest = 'sha256:' + ('a' * 64)
+        Mock Invoke-WebRequest {
+            @{
+                Headers = @{ 'Docker-Content-Digest' = $FixtureDigest }
+                Content = [Text.Encoding]::UTF8.GetBytes((ConvertTo-Json (New-Manifest) -Depth 10))
+            }
+        }
+        (Get-RegistryManifest erikgraa powerospf $FixtureDigest fixture).schemaVersion | Should -Be 2
     }
     It 'fails on registry digest mismatch' {
         Mock Invoke-WebRequest { @{ Headers = @{ 'Docker-Content-Digest' = 'wrong' }; Content = '{}' } }
