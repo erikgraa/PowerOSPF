@@ -21,7 +21,8 @@ function Invoke-PackageApi {
         if ($response.StatusCode -ne 204) { throw 'Package deletion did not return HTTP 204.' }
         return
     }
-    $data = ConvertFrom-Json -InputObject $response.Content -Depth 100 -NoEnumerate
+    $content = if ($response.Content -is [byte[]]) { [Text.Encoding]::UTF8.GetString($response.Content) } else { $response.Content }
+    $data = ConvertFrom-Json -InputObject $content -Depth 100 -NoEnumerate
     if ($Path -match '/versions\?' -and $data -isnot [array]) { throw 'Package inventory is not an array.' }
     if ($null -eq $data) { throw 'Empty API response.' }
     return $data
@@ -70,7 +71,8 @@ function Get-RegistryManifest {
         Accept = 'application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json'
     }
     if (@($response.Headers['Docker-Content-Digest'])[0] -ne $Digest) { throw 'Registry digest mismatch.' }
-    return ConvertFrom-Json -InputObject $response.Content -Depth 100
+    $content = if ($response.Content -is [byte[]]) { [Text.Encoding]::UTF8.GetString($response.Content) } else { $response.Content }
+    return ConvertFrom-Json -InputObject $content -Depth 100
 }
 
 function Get-ReferencedDigests {
