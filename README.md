@@ -82,13 +82,19 @@ Builders return a `byte[]` without IP header; `ConvertFrom-OspfMessage -HasIpHea
 
 ## 🐳 Container
 
-A prebuilt image is published to GHCR on every release (amd64, arm64):
+A prebuilt image is published to GHCR on every release and relevant change merged to `main` (amd64, arm64). Main builds use `nightly`, `nightly-YYYYMMDDHHmmss` (UTC), and `sha-<full commit SHA>`; release builds keep their existing version, major/minor, and `latest` tags. Manual builds retain `dispatch` and are smoke-test-only unless pushing is explicitly selected. Pull requests build and smoke-test without publishing. Module sources/manifests, examples, tools, `Containerfile`, `.dockerignore`, and the container workflow trigger main builds; Markdown-only changes do not.
 
 ```powershell
 podman run -it --rm --network host --cap-add NET_RAW ghcr.io/erikgraa/powerospf:latest
 ```
 
 Host networking lets sessions reach lab devices directly; raw IP protocol 89 needs root (the image default) or `CAP_NET_RAW`. Build locally with `podman build -f Containerfile -t powerospf .`.
+
+`Container retention` runs daily at 03:17 UTC and after successful main publication. It deletes only versions whose **every tag** is a recognized dated nightly or SHA tag, with both creation and last-update timestamps older than 30 days (dated tags must also be older). `latest`, `nightly`, `dispatch`, every release tag, unknown/malformed tags, recent versions, and all untagged versions are preserved. Child/subject manifests referenced by any tagged image, including nested multiarchitecture indexes and attestations, are protected. Untagged storage can therefore accumulate; this intentionally avoids unsafe manifest garbage collection.
+
+Cleanup uses the user-owned `powerospf` package REST API and GHCR with `GITHUB_TOKEN` (`packages: write`); the repository must have package admin access for deletion. API, pagination, or manifest errors fail closed before deletion. It rechecks the full inventory and each candidate, and shares a non-cancelling concurrency group with builds. GitHub deletion is not transactional: external publishers should use the same coordination, and a failure stops remaining deletions without undoing earlier ones.
+
+For a non-destructive inspection, run **Container retention → Run workflow** with `apply` left false, or set `GH_TOKEN` to a package-readable token and run `./tools/Remove-OldContainerVersion.ps1`. `-Apply` explicitly enables deletion. Safety fixtures run with the existing Pester suite and before scheduled cleanup; no live deletion is needed to test the policy.
 
 ## 🧰 Cmdlets
 
